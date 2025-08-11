@@ -8,6 +8,7 @@ import './config/database'; // This will test the DB connection
 
 // Import routes
 import authRoutes from './routes/auth';
+import websiteRoutes from './routes/websites';
 
 dotenv.config();
 
@@ -40,6 +41,7 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/websites', websiteRoutes);
 
 // Default API response
 app.use('/api', (req, res) => {

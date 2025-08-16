@@ -1,0 +1,70 @@
+.
+├── backend
+│   ├── .env
+│   ├── .env.local
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── src
+│   │   ├── components
+│   │   │   └── monitoring
+│   │   ├── config
+│   │   │   └── database.ts
+│   │   ├── controllers
+│   │   │   ├── authController.ts
+│   │   │   └── websiteController.ts
+│   │   ├── middleware
+│   │   │   ├── auth.ts
+│   │   │   └── validateRequest.ts
+│   │   ├── models
+│   │   │   └── User.ts
+│   │   ├── monitoring
+│   │   │   ├── checkers
+│   │   │   ├── queue
+│   │   │   └── workers
+│   │   ├── routes
+│   │   │   ├── auth.ts
+│   │   │   └── websites.ts
+│   │   ├── server.ts
+│   │   ├── services
+│   │   ├── types
+│   │   └── utils
+│   └── tsconfig.json
+├── database
+│   └── schema.sql
+├── docs
+├── .env.local
+├── frontend
+│   ├── eslint.config.mjs
+│   ├── .gitignore
+│   ├── next.config.ts
+│   ├── next-env.d.ts
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── postcss.config.mjs
+│   ├── public
+│   │   ├── file.svg
+│   │   ├── globe.svg
+│   │   ├── next.svg
+│   │   ├── vercel.svg
+│   │   └── window.svg
+│   ├── README.md
+│   ├── src
+│   │   ├── app
+│   │   │   ├── dashboard
+│   │   │   ├── favicon.ico
+│   │   │   ├── globals.css
+│   │   │   ├── layout.tsx
+│   │   │   ├── login
+│   │   │   ├── page.tsx
+│   │   │   └── register
+│   │   └── components
+│   │       ├── auth
+│   │       └── monitoring
+│   └── tsconfig.json
+├── .gitignore
+├── monitoring-workers
+├── project_structure.txt
+├── README.md
+└── scripts
+
+30 directories, 37 files

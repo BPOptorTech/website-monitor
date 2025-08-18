@@ -9,6 +9,7 @@ import './config/database'; // This will test the DB connection
 // Import routes
 import authRoutes from './routes/auth';
 import websiteRoutes from './routes/websites';
+import { monitoringEngine } from './monitoring/MonitoringEngine';
 
 dotenv.config();
 
@@ -55,6 +56,8 @@ app.use('/api', (req, res) => {
     }
   });
 });
+
+monitoringEngine.start().catch(console.error);
 
 app.listen(PORT, () => {
   console.log(`🚀 API Server running on port ${PORT}`);

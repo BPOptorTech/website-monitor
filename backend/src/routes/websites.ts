@@ -1,6 +1,6 @@
 import express from 'express';
 import { body } from 'express-validator';
-import { addWebsite } from '../controllers/websiteController';
+import { createWebsite } from '../controllers/websiteController';
 import { authenticateToken } from '../middleware/auth';
 import { validateRequest } from '../middleware/validateRequest';
 
@@ -17,7 +17,7 @@ router.post('/',
   authenticateToken,
   addWebsiteValidation,
   validateRequest,
-  addWebsite
+  createWebsite
 );
 
 export default router;

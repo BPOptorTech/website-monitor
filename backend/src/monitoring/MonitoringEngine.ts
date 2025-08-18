@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import pool from '../config/database';
+import { sslMonitor } from './SSLMonitor';
 
 export interface MonitorResult {
   websiteId: number;
@@ -29,6 +30,7 @@ export interface MonitorConfig {
 
 export class MonitoringEngine {
   private activeChecks = new Map<number, NodeJS.Timeout>();
+  private sslChecks = new Map<number, NodeJS.Timeout>();
   private isRunning = false;
 
   constructor(private db: Pool = pool) {}
@@ -40,8 +42,10 @@ export class MonitoringEngine {
     this.isRunning = true;
     
     await this.loadAndStartMonitoring();
+    await this.startSSLMonitoring();
     
     setInterval(() => this.loadAndStartMonitoring(), 5 * 60 * 1000);
+    setInterval(() => this.startSSLMonitoring(), 24 * 60 * 60 * 1000); // Check SSL daily
   }
 
   async stop(): Promise<void> {
@@ -52,6 +56,11 @@ export class MonitoringEngine {
       clearTimeout(timeout);
     }
     this.activeChecks.clear();
+
+    for (const [websiteId, timeout] of this.sslChecks) {
+      clearTimeout(timeout);
+    }
+    this.sslChecks.clear();
   }
 
   private async loadAndStartMonitoring(): Promise<void> {
@@ -76,6 +85,77 @@ export class MonitoringEngine {
     } catch (error) {
       console.error('❌ Error loading monitoring configs:', error);
     }
+  }
+
+  private async startSSLMonitoring(): Promise<void> {
+    try {
+      const result = await this.db.query(`
+        SELECT w.id as website_id, w.url, w.name
+        FROM websites w
+        WHERE w.url LIKE 'https://%'
+      `);
+
+      console.log(`🔒 Starting SSL monitoring for ${result.rows.length} HTTPS websites`);
+
+      for (const website of result.rows) {
+        this.scheduleSSLCheck(website);
+      }
+    } catch (error) {
+      console.error('❌ Error starting SSL monitoring:', error);
+    }
+  }
+
+  private scheduleSSLCheck(website: any): void {
+    const checkSSL = async () => {
+      if (!this.isRunning) return;
+      
+      try {
+        const result = await sslMonitor.checkSSL(website.website_id, website.url);
+        
+        const status = result.certificateValid ? '✅' : '❌';
+        const expiry = result.daysUntilExpiry !== null ? `${result.daysUntilExpiry} days` : 'N/A';
+        
+        console.log(`🔒 SSL Check ${website.name}: ${status} Grade: ${result.securityGrade}, Expires: ${expiry}`);
+        
+        // Check for SSL alerts
+        if (result.daysUntilExpiry !== null && result.daysUntilExpiry <= 30) {
+          await this.sendSSLAlert(website, result);
+        }
+        
+      } catch (error) {
+        console.error(`❌ SSL check failed for ${website.name}:`, error);
+      }
+
+      // Schedule next SSL check in 24 hours
+      if (this.isRunning) {
+        const timeout = setTimeout(checkSSL, 24 * 60 * 60 * 1000);
+        this.sslChecks.set(website.website_id, timeout);
+      }
+    };
+
+    checkSSL(); // Run immediately, then schedule
+  }
+
+  private async sendSSLAlert(website: any, sslResult: any): Promise<void> {
+    const daysLeft = sslResult.daysUntilExpiry;
+    let urgency = '';
+    
+    if (daysLeft <= 1) urgency = '🚨 CRITICAL';
+    else if (daysLeft <= 7) urgency = '⚠️ URGENT';
+    else if (daysLeft <= 30) urgency = '⚠️ WARNING';
+
+    const message = `${urgency} SSL Certificate Expiring Soon!\n` +
+                   `Website: ${website.name}\n` +
+                   `URL: ${website.url}\n` +
+                   `Days until expiry: ${daysLeft}\n` +
+                   `Issuer: ${sslResult.issuer}\n` +
+                   `Security Grade: ${sslResult.securityGrade}\n` +
+                   `Action Required: Renew SSL certificate immediately`;
+
+    console.log(`🔒 SSL Alert for ${website.name}: ${message}`);
+    
+    // Here you would integrate with your existing alert system
+    // For now, we'll just log the alert
   }
 
   private scheduleMonitoring(config: any): void {
@@ -280,6 +360,16 @@ export class MonitoringEngine {
       console.error('❌ Error in manual check:', error);
       return null;
     }
+  }
+
+  // New method to get SSL status for dashboard
+  public async getSSLStatus(websiteId: number) {
+    return await sslMonitor.getSSLStatus(websiteId);
+  }
+
+  // New method to check all expiring certificates
+  public async getExpiringCertificates(days: number = 30) {
+    return await sslMonitor.checkExpiringCertificates(days);
   }
 }
 

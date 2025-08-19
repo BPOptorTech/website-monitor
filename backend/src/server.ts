@@ -4,17 +4,31 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import { createServer } from 'http';
 import './config/database'; // This will test the DB connection
 
 // Import routes
 import authRoutes from './routes/auth';
 import websiteRoutes from './routes/websites';
+import monitoringRoutes from './routes/monitoring';
 import { monitoringEngine } from './monitoring/MonitoringEngine';
+
+// Import WebSocket service
+import { WebSocketService } from './services/WebSocketService';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.API_PORT || 3001;
+
+// Create HTTP server
+const server = createServer(app);
+
+// Initialize WebSocket service
+const webSocketService = new WebSocketService(server);
+
+// Export WebSocket service for use in other modules
+export { webSocketService };
 
 // Security middleware
 app.use(helmet());
@@ -37,28 +51,51 @@ app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    websocket: {
+      connected_users: webSocketService.getConnectedUsersCount()
+    }
+  });
 });
 
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/websites', websiteRoutes);
+app.use('/api/monitoring', monitoringRoutes);
+
+// Connect WebSocket service to monitoring routes
+import { setWebSocketService } from './routes/monitoring';
+setWebSocketService(webSocketService);
 
 // Default API response
 app.use('/api', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'Website Monitor API v1.0',
     endpoints: {
       auth: {
         register: 'POST /api/auth/register',
         login: 'POST /api/auth/login'
+      },
+      monitoring: {
+        start: 'POST /api/monitoring/start',
+        status: 'GET /api/monitoring/status',
+        results: 'GET /api/monitoring/results/:websiteId'
       }
+    },
+    websocket: {
+      endpoint: '/socket.io/',
+      connected_users: webSocketService.getConnectedUsersCount()
     }
   });
 });
 
+// Start monitoring engine
 monitoringEngine.start().catch(console.error);
 
-app.listen(PORT, () => {
+// Start server
+server.listen(PORT, () => {
   console.log(`🚀 API Server running on port ${PORT}`);
+  console.log(`🔌 WebSocket server ready for real-time updates`);
 });

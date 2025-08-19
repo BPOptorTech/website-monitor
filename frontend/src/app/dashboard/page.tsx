@@ -1,12 +1,13 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AddWebsiteForm from '@/components/monitoring/AddWebsiteForm';
+import { RealtimeMonitor } from '@/components/RealtimeMonitor';
 
 export default function DashboardPage() {
   const [user, setUser] = useState(null);
   const [websites, setWebsites] = useState([]);
+  const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
 
   const handleWebsiteAdded = (newWebsite) => {
@@ -15,30 +16,30 @@ export default function DashboardPage() {
 
   // First useEffect: Handle authentication
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const authToken = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
-    
-    if (!token || !userData) {
+   
+    if (!authToken || !userData) {
       router.push('/login');
       return;
     }
-    
+   
     setUser(JSON.parse(userData));
+    setToken(authToken);
   }, [router]);
 
   // Second useEffect: Fetch websites when user is loaded
   useEffect(() => {
     const fetchWebsites = async () => {
-      if (!user) return;
-      
+      if (!user || !token) return;
+     
       try {
-        const token = localStorage.getItem('token');
         const response = await fetch('http://localhost:3001/api/websites', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
-        
+       
         if (response.ok) {
           const data = await response.json();
           setWebsites(data.websites || []);
@@ -47,9 +48,26 @@ export default function DashboardPage() {
         console.error('Failed to fetch websites:', error);
       }
     };
-
     fetchWebsites();
-  }, [user]);
+  }, [user, token]);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'up': return 'bg-green-100 text-green-800';
+      case 'down': return 'bg-red-100 text-red-800';
+      case 'degraded': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatLastChecked = (lastChecked: string) => {
+    if (!lastChecked) return 'Never';
+    const date = new Date(lastChecked);
+    return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(
+      Math.round((date.getTime() - Date.now()) / (1000 * 60)),
+      'minute'
+    );
+  };
 
   if (!user) {
     return (
@@ -73,26 +91,103 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-      
+     
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <AddWebsiteForm onWebsiteAdded={handleWebsiteAdded} />
-        
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">Your Websites</h2>
-          {websites.length === 0 ? (
-            <p className="text-gray-600">
-              No websites being monitored yet. Add your first website above!
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {websites.map((website, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <h3 className="font-medium">{website.name}</h3>
-                  <p className="text-gray-600">{website.url}</p>
-                </div>
-              ))}
+        {/* Real-time Monitoring Section */}
+        <div className="mb-8">
+          <div className="bg-white rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Real-time Monitoring</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Live updates from your website monitoring service
+              </p>
             </div>
-          )}
+            <div className="p-6">
+              <RealtimeMonitor token={token} />
+            </div>
+          </div>
+        </div>
+
+        {/* Add Website Form */}
+        <div className="mb-8">
+          <AddWebsiteForm onWebsiteAdded={handleWebsiteAdded} />
+        </div>
+       
+        {/* Websites List */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Your Websites</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {websites.length} website{websites.length !== 1 ? 's' : ''} being monitored
+            </p>
+          </div>
+          
+          <div className="p-6">
+            {websites.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="text-gray-400 mb-2">
+                  <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <p className="text-gray-600 text-lg">
+                  No websites being monitored yet
+                </p>
+                <p className="text-gray-500 text-sm mt-1">
+                  Add your first website above to start monitoring!
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {websites.map((website, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3">
+                          <h3 className="font-medium text-gray-900">{website.name}</h3>
+                          {website.status && (
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(website.status)}`}>
+                              {website.status.toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-gray-600 mt-1">{website.url}</p>
+                        <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+                          <span>Last checked: {formatLastChecked(website.last_checked)}</span>
+                          {website.check_interval && (
+                            <span>Every {Math.round(website.check_interval / 60)} minutes</span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <button 
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                          onClick={() => {
+                            // TODO: Add view details functionality
+                            console.log('View details for', website.name);
+                          }}
+                        >
+                          View Details
+                        </button>
+                        <button 
+                          className="text-gray-400 hover:text-gray-600"
+                          onClick={() => {
+                            // TODO: Add more options
+                            console.log('More options for', website.name);
+                          }}
+                        >
+                          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

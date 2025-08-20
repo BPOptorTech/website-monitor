@@ -4,6 +4,7 @@ import axios from 'axios';
 import * as https from 'https';
 import * as tls from 'tls';
 import { URL } from 'url';
+import { EmailService } from './EmailService';
 
 export interface MonitorResult {
   websiteId: number;
@@ -54,6 +55,7 @@ export interface Website {
 import type { WebSocketService } from './WebSocketService';
 
 export class MonitoringService {
+  private emailService: EmailService;
   private db: Pool;
   private monitoringIntervals: Map<number, NodeJS.Timeout> = new Map();
   private isRunning = false;
@@ -62,6 +64,13 @@ export class MonitoringService {
   constructor(database: Pool, webSocketService?: WebSocketService) {
     this.db = database;
     this.webSocketService = webSocketService;
+    this.emailService = new EmailService({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
+      user: process.env.SMTP_USER || '',
+      pass: process.env.SMTP_PASS || ''
+    });
   }
 
   /**
@@ -503,14 +512,36 @@ export class MonitoringService {
 
       console.log(`🚨 Alert triggered for ${website.name}: ${alertType}`);
       
-      // TODO: Send email notifications to website.alertEmails
-      // This will be implemented in the next step
+      // Send email notification for critical alerts
+      if (alertType === 'status_change' && result.status === 'down') {
+        // Get alert emails for this website
+        const emailResult = await this.db.query(`
+          SELECT alert_email 
+          FROM websites 
+          WHERE id = $1 AND alert_email IS NOT NULL
+        `, [website.id]);
+
+        console.log('🔍 DEBUG: Email query executed, rows found:', emailResult.rows.length);
+        if (emailResult.rows.length > 0) {
+          console.log('🔍 DEBUG: Email from DB:', emailResult.rows[0].alert_email);
+        }
+
+        if (emailResult.rows.length > 0 && emailResult.rows[0].alert_email) {
+          await this.emailService.sendDowntimeAlert(
+            website.name,
+            website.url,
+            result.errorMessage || 'Website is not responding',
+            emailResult.rows[0].alert_email
+          );
+          console.log(`📧 Email alert sent for ${website.name}`);
+        }
+      }
       
     } catch (error) {
       console.error('Error triggering alert:', error);
     }
   }
-
+  
   /**
    * Generate alert message
    */

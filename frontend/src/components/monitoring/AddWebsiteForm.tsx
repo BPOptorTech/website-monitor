@@ -10,6 +10,27 @@ export default function AddWebsiteForm({ onWebsiteAdded }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Function to normalize URL - adds https:// if no protocol is provided
+  const normalizeUrl = (inputUrl) => {
+    if (!inputUrl) return '';
+    
+    // Remove any whitespace
+    const cleanUrl = inputUrl.trim();
+    
+    // If it already has a protocol, return as-is
+    if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+      return cleanUrl;
+    }
+    
+    // Add https:// by default
+    return `https://${cleanUrl}`;
+  };
+
+  const handleUrlChange = (e) => {
+    const inputValue = e.target.value;
+    setFormData({ ...formData, url: inputValue });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -21,6 +42,9 @@ export default function AddWebsiteForm({ onWebsiteAdded }) {
       // Filter out empty emails
       const validEmails = alertEmails.filter(email => email.trim() !== '');
       
+      // Normalize the URL before sending
+      const normalizedUrl = normalizeUrl(formData.url);
+      
       const response = await fetch('http://localhost:3001/api/websites', {
         method: 'POST',
         headers: {
@@ -29,6 +53,7 @@ export default function AddWebsiteForm({ onWebsiteAdded }) {
         },
         body: JSON.stringify({
           ...formData,
+          url: normalizedUrl,
           alertEmails: validEmails
         }),
       });
@@ -41,7 +66,7 @@ export default function AddWebsiteForm({ onWebsiteAdded }) {
         onWebsiteAdded({
           id: data.data.id,
           name: formData.name,
-          url: formData.url,
+          url: normalizedUrl,
           alertEmails: validEmails
         });
       } else {
@@ -71,6 +96,9 @@ export default function AddWebsiteForm({ onWebsiteAdded }) {
     setAlertEmails(newEmails);
   };
 
+  // Show preview of what the final URL will be
+  const urlPreview = formData.url ? normalizeUrl(formData.url) : '';
+
   return (
     <div className="bg-white p-6 rounded-lg shadow mb-6">
       <h3 className="text-lg font-semibold mb-4">Add Website to Monitor</h3>
@@ -94,7 +122,7 @@ export default function AddWebsiteForm({ onWebsiteAdded }) {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Trinity Hearing"
+              placeholder="My Website"
             />
           </div>
           <div>
@@ -102,13 +130,21 @@ export default function AddWebsiteForm({ onWebsiteAdded }) {
               Website URL
             </label>
             <input
-              type="url"
+              type="text"
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={formData.url}
-              onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-              placeholder="https://www.trinityhearing.com"
+              onChange={handleUrlChange}
+              placeholder="example.com"
             />
+            {urlPreview && formData.url && (
+              <div className="mt-1 text-xs text-gray-500">
+                Will monitor: <span className="text-blue-600 font-medium">{urlPreview}</span>
+              </div>
+            )}
+            <div className="mt-1 text-xs text-gray-400">
+              💡 You can enter just the domain name - we'll add https:// automatically
+            </div>
           </div>
         </div>
 
@@ -131,7 +167,7 @@ export default function AddWebsiteForm({ onWebsiteAdded }) {
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={email}
                   onChange={(e) => updateEmail(index, e.target.value)}
-                  placeholder="admin@trinityhearing.com"
+                  placeholder="admin@example.com"
                 />
                 {alertEmails.length > 1 && (
                   <button

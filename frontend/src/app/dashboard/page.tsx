@@ -16,6 +16,7 @@ export default function DashboardPage() {
 
   // First useEffect: Handle authentication
   useEffect(() => {
+    console.log('Auth useEffect running');  // ADD THIS LINE
     const authToken = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
    
@@ -30,19 +31,23 @@ export default function DashboardPage() {
 
   // Second useEffect: Fetch websites when user is loaded
   useEffect(() => {
+    console.log('useEffect triggered - user:', user, 'token:', !!token); 
     const fetchWebsites = async () => {
+      console.log('fetchWebsites called - about to make API request');  // ADD THIS LINE
       if (!user || !token) return;
      
       try {
-        const response = await fetch('http://localhost:3001/api/websites', {
+        const response = await fetch(`http://localhost:3001/api/websites?t=${Date.now()}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
+        console.log('API response:', response.status, response.ok);  // ADD THIS LINE
        
         if (response.ok) {
           const data = await response.json();
-          setWebsites(data.websites || []);
+          console.log('API data received:', data);  // ADD THIS LINE
+          setWebsites(data.data || []);
         }
       } catch (error) {
         console.error('Failed to fetch websites:', error);

@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import pool from '../config/database';
 import { sslMonitor } from './SSLMonitor';
+import { EmailService } from '../services/EmailService';
 
 export interface MonitorResult {
   websiteId: number;
@@ -32,8 +33,18 @@ export class MonitoringEngine {
   private activeChecks = new Map<number, NodeJS.Timeout>();
   private sslChecks = new Map<number, NodeJS.Timeout>();
   private isRunning = false;
+  private emailService: EmailService;
 
-  constructor(private db: Pool = pool) {}
+  constructor(private db: Pool = pool) {
+    // Initialize EmailService with environment configuration
+    this.emailService = new EmailService({
+      host: process.env.SMTP_HOST || 'smtp.zoho.com',
+      port: parseInt(process.env.SMTP_PORT || '465'),
+      secure: process.env.SMTP_SECURE === 'true',
+      user: process.env.SMTP_USER || 'bpeterson@optortech.com',
+      pass: process.env.SMTP_PASS || ''
+    });
+  }
 
   async start(): Promise<void> {
     if (this.isRunning) return;
@@ -298,7 +309,7 @@ export class MonitoringEngine {
     try {
       switch (alertConfig.alert_type) {
         case 'email':
-          await this.sendEmailAlert(alertConfig.destination, message, website);
+          await this.sendEmailAlert(alertConfig.destination, message, website, result);
           break;
         case 'sms':
           console.log(`📱 SMS Alert: ${message}`);
@@ -333,9 +344,24 @@ export class MonitoringEngine {
            `Time: ${new Date().toLocaleString()}`;
   }
 
-  private async sendEmailAlert(email: string, message: string, website: any): Promise<void> {
+  private async sendEmailAlert(email: string, message: string, website: any, result: MonitorResult): Promise<void> {
     console.log(`📧 Email Alert to ${email}:`);
     console.log(message);
+    
+    // Now actually send the email using EmailService
+    try {
+      const errorDetails = result.errorMessage || `Status Code: ${result.statusCode || 'Unknown'}`;
+      await this.emailService.sendDowntimeAlert(
+        website.name,
+        website.url,
+        errorDetails,
+        email
+      );
+      console.log(`✅ Email successfully sent to ${email}`);
+    } catch (error) {
+      console.error(`❌ Failed to send email to ${email}:`, error);
+      throw error; // Re-throw to mark alert as failed in database
+    }
   }
 
   public async checkWebsite(websiteId: number): Promise<MonitorResult | null> {

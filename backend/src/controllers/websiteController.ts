@@ -4,7 +4,7 @@ import pool from '../config/database';
 export const createWebsite = async (req: Request, res: Response) => {
   try {
     const { name, url, alertEmails } = req.body;
-    const userId = (req as any).userId;
+    const userId = (req as any).user.userId;
 
     // Validate required fields
     if (!name || !url) {
@@ -97,7 +97,7 @@ export const createWebsite = async (req: Request, res: Response) => {
 
 export const getWebsites = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = (req as any).user.userId;
     
     const result = await pool.query(`
       SELECT 
@@ -134,7 +134,7 @@ export const updateWebsite = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { name, url, alertEmails } = req.body;
-    const userId = (req as any).userId;
+    const userId = (req as any).user.userId;
 
     // Verify website belongs to user
     const websiteCheck = await pool.query(
@@ -215,7 +215,7 @@ export const updateWebsite = async (req: Request, res: Response) => {
 export const deleteWebsite = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req as any).userId;
+    const userId = (req as any).user.userId;
 
     // Verify website belongs to user and delete (cascade will handle related records)
     const result = await pool.query(

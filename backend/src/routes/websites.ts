@@ -1,8 +1,8 @@
 import express from 'express';
 import { body } from 'express-validator';
-import { createWebsite } from '../controllers/websiteController';
 import { authenticateToken } from '../middleware/auth';
 import { validateRequest } from '../middleware/validateRequest';
+import { createWebsite, getWebsites } from '../controllers/websiteController';
 
 const router = express.Router();
 
@@ -18,6 +18,12 @@ router.post('/',
   addWebsiteValidation,
   validateRequest,
   createWebsite
+);
+
+// GET /api/websites - Get user's websites
+router.get('/',
+  authenticateToken,
+  getWebsites
 );
 
 export default router;

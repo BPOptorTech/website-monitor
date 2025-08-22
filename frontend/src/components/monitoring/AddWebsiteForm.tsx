@@ -1,7 +1,11 @@
 'use client';
 import { useState } from 'react';
 
-export default function AddWebsiteForm({ onWebsiteAdded }) {
+interface AddWebsiteFormProps {
+  onWebsiteAdded: (website: { id: number; name: string; url: string; alertEmails: string[] }) => void;
+}
+
+export default function AddWebsiteForm({ onWebsiteAdded }: AddWebsiteFormProps) {
   const [formData, setFormData] = useState({
     name: '',
     url: ''
@@ -11,7 +15,7 @@ export default function AddWebsiteForm({ onWebsiteAdded }) {
   const [error, setError] = useState('');
 
   // Function to normalize URL - adds https:// if no protocol is provided
-  const normalizeUrl = (inputUrl) => {
+  const normalizeUrl = (inputUrl: string) => {
     if (!inputUrl) return '';
     
     // Remove any whitespace
@@ -26,7 +30,7 @@ export default function AddWebsiteForm({ onWebsiteAdded }) {
     return `https://${cleanUrl}`;
   };
 
-  const handleUrlChange = (e) => {
+ const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
     setFormData({ ...formData, url: inputValue });
   };
@@ -143,7 +147,7 @@ export default function AddWebsiteForm({ onWebsiteAdded }) {
               </div>
             )}
             <div className="mt-1 text-xs text-gray-400">
-              💡 You can enter just the domain name - we'll add https:// automatically
+              💡 You can enter just the domain name - we&apos;ll add https:// automatically
             </div>
           </div>
         </div>

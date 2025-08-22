@@ -4,19 +4,61 @@ import { useRouter } from 'next/navigation';
 import AddWebsiteForm from '@/components/monitoring/AddWebsiteForm';
 import { RealtimeMonitor } from '@/components/RealtimeMonitor';
 
+// Define proper interfaces based on database schema
+interface User {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name?: string;
+  subscription_tier?: string;
+}
+
+interface Website {
+  id: number;
+  user_id: number;
+  name: string;
+  url: string;
+  check_interval?: number;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  status?: string;
+  last_checked?: string | null;
+  monitoring_enabled?: boolean;
+  alert_email?: string | null;
+  alert_emails?: string[];
+}
+
+interface NewWebsite {
+  id: number;
+  name: string;
+  url: string;
+  alertEmails: string[];
+}
+
 export default function DashboardPage() {
-  const [user, setUser] = useState(null);
-  const [websites, setWebsites] = useState([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [websites, setWebsites] = useState<Website[]>([]);
   const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleWebsiteAdded = (newWebsite) => {
-    setWebsites([...websites, newWebsite]);
+  const handleWebsiteAdded = (newWebsite: NewWebsite) => {
+    // Convert NewWebsite to Website format
+    const websiteToAdd: Website = {
+      id: newWebsite.id,
+      user_id: user?.id || 0,
+      name: newWebsite.name,
+      url: newWebsite.url,
+      alert_emails: newWebsite.alertEmails,
+      status: 'unknown',
+      monitoring_enabled: true
+    };
+    setWebsites([...websites, websiteToAdd]);
   };
 
   // First useEffect: Handle authentication
   useEffect(() => {
-    console.log('Auth useEffect running');  // ADD THIS LINE
+    console.log('Auth useEffect running');
     const authToken = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
    
@@ -33,7 +75,7 @@ export default function DashboardPage() {
   useEffect(() => {
     console.log('useEffect triggered - user:', user, 'token:', !!token); 
     const fetchWebsites = async () => {
-      console.log('fetchWebsites called - about to make API request');  // ADD THIS LINE
+      console.log('fetchWebsites called - about to make API request');
       if (!user || !token) return;
      
       try {
@@ -42,11 +84,11 @@ export default function DashboardPage() {
             'Authorization': `Bearer ${token}`
           }
         });
-        console.log('API response:', response.status, response.ok);  // ADD THIS LINE
+        console.log('API response:', response.status, response.ok);
        
         if (response.ok) {
           const data = await response.json();
-          console.log('API data received:', data);  // ADD THIS LINE
+          console.log('API data received:', data);
           setWebsites(data.data || []);
         }
       } catch (error) {
@@ -65,7 +107,7 @@ export default function DashboardPage() {
     }
   };
 
-  const formatLastChecked = (lastChecked: string) => {
+  const formatLastChecked = (lastChecked: string | null | undefined) => {
     if (!lastChecked) return 'Never';
     const date = new Date(lastChecked);
     return new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(
@@ -145,7 +187,7 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-4">
                 {websites.map((website, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
+                  <div key={website.id || index} className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3">

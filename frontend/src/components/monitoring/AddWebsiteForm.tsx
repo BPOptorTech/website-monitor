@@ -15,7 +15,7 @@ export default function AddWebsiteForm({ onWebsiteAdded }: AddWebsiteFormProps) 
   const [error, setError] = useState('');
 
   // Function to normalize URL - adds https:// if no protocol is provided
-  const normalizeUrl = (inputUrl: string) => {
+  const normalizeUrl = (inputUrl: string): string => {
     if (!inputUrl) return '';
     
     // Remove any whitespace
@@ -30,12 +30,12 @@ export default function AddWebsiteForm({ onWebsiteAdded }: AddWebsiteFormProps) 
     return `https://${cleanUrl}`;
   };
 
- const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
     setFormData({ ...formData, url: inputValue });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
@@ -76,7 +76,8 @@ export default function AddWebsiteForm({ onWebsiteAdded }: AddWebsiteFormProps) 
       } else {
         setError(data.error || 'Failed to add website');
       }
-    } catch (err) {
+    } catch (error) {
+      console.error('Network error:', error);
       setError('Network error. Please try again.');
     } finally {
       setIsLoading(false);
@@ -87,14 +88,14 @@ export default function AddWebsiteForm({ onWebsiteAdded }: AddWebsiteFormProps) 
     setAlertEmails([...alertEmails, '']);
   };
 
-  const removeEmailField = (index) => {
+  const removeEmailField = (index: number) => {
     if (alertEmails.length > 1) {
       const newEmails = alertEmails.filter((_, i) => i !== index);
       setAlertEmails(newEmails);
     }
   };
 
-  const updateEmail = (index, value) => {
+  const updateEmail = (index: number, value: string) => {
     const newEmails = [...alertEmails];
     newEmails[index] = value;
     setAlertEmails(newEmails);
@@ -125,7 +126,7 @@ export default function AddWebsiteForm({ onWebsiteAdded }: AddWebsiteFormProps) 
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
               placeholder="My Website"
             />
           </div>
@@ -170,7 +171,7 @@ export default function AddWebsiteForm({ onWebsiteAdded }: AddWebsiteFormProps) 
                   type="email"
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={email}
-                  onChange={(e) => updateEmail(index, e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateEmail(index, e.target.value)}
                   placeholder="admin@example.com"
                 />
                 {alertEmails.length > 1 && (
